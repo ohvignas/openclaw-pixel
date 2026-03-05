@@ -109,12 +109,17 @@ Le volume `~/.openclaw/` est partagé entre le gateway et le pixel-ui, ce qui do
 
 ## Développement local
 
+Pour contribuer au code de l'UI (sans avoir besoin d'Open Claw qui tourne) :
+
 ```bash
 npm install
 npm run dev
 ```
 
-Frontend sur `http://localhost:5173`, backend sur `http://localhost:3000`.
+- Frontend : http://localhost:5173
+- Backend API : http://localhost:3000
+
+> Le bureau s'affichera vide (pas d'agents) — c'est normal, il n'y a pas de gateway Open Claw en dev local. Pour tester avec de vrais agents, utilise `docker compose up -d`.
 
 ---
 

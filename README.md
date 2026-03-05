@@ -49,29 +49,17 @@ Un panneau **Gateway** (bouton ⚙ en haut) gère le niveau global : plugins ins
 
 ---
 
-## Installation (2 minutes)
+## Installation
 
-**Prérequis :** [Docker Desktop](https://docker.com/get-started)
+**Prérequis :** [Docker Desktop](https://docker.com/get-started) — installe-le et lance-le.
 
 ```bash
 git clone https://github.com/ohvignas/openclaw-pixel
 cd openclaw-pixel
-cp .env.example .env
+node setup.js
 ```
 
-Ouvre `.env` et colle ta clé API Anthropic :
-
-```
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-Lance tout :
-
-```bash
-docker compose up -d
-```
-
-Ouvre **http://localhost:3333**
+Le script te pose des questions (provider AI, clé API, canaux...), configure tout automatiquement et lance Docker. C'est tout.
 
 ---
 

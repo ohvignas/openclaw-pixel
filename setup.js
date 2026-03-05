@@ -3,6 +3,7 @@
 
 const readline = require("readline");
 const fs = require("fs");
+const os = require("os");
 const { execSync, spawn } = require("child_process");
 const path = require("path");
 
@@ -323,7 +324,88 @@ async function main() {
   fs.writeFileSync(path.join(__dirname, ".env"), envLines.join("\n") + "\n");
   spinEnv.stop(".env créé");
 
-  // ── 6. Docker Compose up ──────────────────────────────────────────────────
+  // ── 6. Ecrire ~/.openclaw/openclaw.json ───────────────────────────────────
+  const spinConfig = spinner("Configuration Open Claw (~/.openclaw/openclaw.json)...");
+  await new Promise((r) => setTimeout(r, 300));
+
+  const openclawDir = path.join(os.homedir(), ".openclaw");
+  const openclawConfigPath = path.join(openclawDir, "openclaw.json");
+
+  if (!fs.existsSync(openclawDir)) {
+    fs.mkdirSync(openclawDir, { recursive: true });
+  }
+
+  let existingConfig = {};
+  if (fs.existsSync(openclawConfigPath)) {
+    try {
+      existingConfig = JSON.parse(fs.readFileSync(openclawConfigPath, "utf8"));
+    } catch {
+      // Config corrompue ou JSON5 avec commentaires — on part de zéro
+    }
+  }
+
+  const config = JSON.parse(JSON.stringify(existingConfig)); // deep copy
+
+  // Provider
+  if (provider.value !== "ollama" && apiKey && apiKey.length >= 10) {
+    if (!config.models) config.models = {};
+    if (!config.models.providers) config.models.providers = {};
+    config.models.providers[provider.value] = {
+      ...(config.models.providers[provider.value] || {}),
+      apiKey,
+    };
+  }
+
+  // Modèle par défaut
+  const defaultModels = {
+    anthropic: "anthropic/claude-sonnet-4-6",
+    openai: "openai/gpt-4o",
+    mistral: "mistral/mistral-large-latest",
+    ollama: "ollama/llama3",
+  };
+  if (!config.agents) config.agents = {};
+  if (!config.agents.defaults) config.agents.defaults = {};
+  if (!config.agents.defaults.model) config.agents.defaults.model = {};
+  config.agents.defaults.model.primary = defaultModels[provider.value];
+
+  // Canaux
+  if (channelEnv.TELEGRAM_BOT_TOKEN) {
+    if (!config.channels) config.channels = {};
+    config.channels.telegram = {
+      ...(config.channels?.telegram || {}),
+      botToken: channelEnv.TELEGRAM_BOT_TOKEN,
+    };
+  }
+
+  if (channelEnv.SLACK_BOT_TOKEN) {
+    if (!config.channels) config.channels = {};
+    config.channels.slack = {
+      ...(config.channels?.slack || {}),
+      botToken: channelEnv.SLACK_BOT_TOKEN,
+      signingSecret: channelEnv.SLACK_SIGNING_SECRET || "",
+    };
+  }
+
+  if (channelEnv.DISCORD_BOT_TOKEN) {
+    if (!config.channels) config.channels = {};
+    config.channels.discord = {
+      ...(config.channels?.discord || {}),
+      botToken: channelEnv.DISCORD_BOT_TOKEN,
+    };
+  }
+
+  fs.writeFileSync(openclawConfigPath, JSON.stringify(config, null, 2) + "\n");
+  spinConfig.stop(`openclaw.json écrit dans ${openclawConfigPath}`);
+
+  // WhatsApp — nécessite un QR code interactif, ne peut pas être automatisé
+  if (channels.some((c) => c.value === "whatsapp")) {
+    console.log();
+    warn("WhatsApp nécessite un scan de QR code.");
+    info("Après le démarrage, lance cette commande pour connecter WhatsApp :");
+    info(gray("  docker compose exec openclaw-cli openclaw channels login --channel whatsapp"));
+  }
+
+  // ── 7. Docker Compose up ──────────────────────────────────────────────────
   const spinDocker = spinner("Lancement des conteneurs (première fois = téléchargement des images)...");
 
   await new Promise((resolve, reject) => {
@@ -345,7 +427,7 @@ async function main() {
     warn("Essaie manuellement : docker compose up -d");
   });
 
-  // ── 7. Résumé ──────────────────────────────────────────────────────────────
+  // ── 8. Résumé ──────────────────────────────────────────────────────────────
   console.log();
   console.log(gray("  " + "═".repeat(68)));
   console.log();

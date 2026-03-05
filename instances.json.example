@@ -1,0 +1,14 @@
+[
+  {
+    "id": "local",
+    "name": "Mac Mini Local",
+    "url": "ws://localhost:18789",
+    "token": ""
+  },
+  {
+    "id": "vps",
+    "name": "VPS Production",
+    "url": "wss://monvps.com:18789",
+    "token": ""
+  }
+]

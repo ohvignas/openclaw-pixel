@@ -6,9 +6,11 @@ import { useEconomyStore } from "../store/economyStore.ts";
 interface TopBarProps {
   onGatewayClick: () => void
   onShopClick: () => void
+  onEditToggle?: () => void
+  editMode?: boolean
 }
 
-export function TopBar({ onGatewayClick, onShopClick }: TopBarProps) {
+export function TopBar({ onGatewayClick, onShopClick, onEditToggle, editMode }: TopBarProps) {
   const status = useGatewayStore((s) => s.status);
   const instances = useGatewayStore((s) => s.instances);
   const activeInstanceId = useGatewayStore((s) => s.activeInstanceId);
@@ -111,6 +113,21 @@ export function TopBar({ onGatewayClick, onShopClick }: TopBarProps) {
           +
         </button>
       </div>
+
+      {/* Bouton EDIT */}
+      {onEditToggle && (
+        <button
+          className={`font-pixel text-xs px-2 py-1 border transition-colors ${
+            editMode
+              ? 'text-pixel-accent border-pixel-accent bg-pixel-border'
+              : 'text-gray-500 border-pixel-border hover:text-pixel-accent hover:border-pixel-accent'
+          }`}
+          onClick={onEditToggle}
+          title="Mode édition"
+        >
+          EDIT
+        </button>
+      )}
 
       {/* Bouton SHOP */}
       <button

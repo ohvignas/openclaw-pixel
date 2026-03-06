@@ -8,11 +8,21 @@ import { clawhubRouter } from "./routes/clawhub.js";
 import { cliRouter } from "./routes/cli.js";
 import { agentSkillsRouter } from "./routes/agent-skills.js";
 import { toolConnectionsRouter } from "./routes/tool-connections.js";
+import { economyRouter } from "./routes/economy.js";
 import { setupWsProxy } from "./ws-proxy.js";
 
 const app = express();
 app.set("trust proxy", true);
-app.use(cors());
+const allowedOrigin = process.env.PIXEL_UI_ORIGIN;
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || !allowedOrigin || origin === allowedOrigin) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error("Origin not allowed by Pixel UI backend."));
+  },
+}));
 app.use(express.json());
 app.use("/api", healthRouter);
 app.use("/api/files", filesRouter);
@@ -20,6 +30,7 @@ app.use("/api/agent-skills", agentSkillsRouter);
 app.use("/api/clawhub", clawhubRouter);
 app.use("/api/cli", cliRouter);
 app.use("/api/tool-connections", toolConnectionsRouter);
+app.use("/api/economy", economyRouter);
 
 // Servir le build frontend en production
 if (process.env.NODE_ENV === "production") {

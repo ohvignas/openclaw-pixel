@@ -111,7 +111,9 @@ export function App() {
     requireManualReconnect,
     clearManualReconnect,
   } = useGatewayStore();
-  const { coins, fetchBalance, fetchInventory } = useEconomyStore();
+  const coins = useEconomyStore((s) => s.coins);
+  const fetchBalance = useEconomyStore((s) => s.fetchBalance);
+  const fetchInventory = useEconomyStore((s) => s.fetchInventory);
   const [showGateway, setShowGateway] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [agentScreenId, setAgentScreenId] = useState<string | null>(null);

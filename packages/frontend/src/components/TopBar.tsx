@@ -11,6 +11,8 @@ interface DeskOption {
 
 interface TopBarProps {
   onGatewayClick: () => void
+  onShopClick: () => void
+  coins: number
   editMode: boolean
   onToggleEdit: () => void
   onResetLayout: () => void
@@ -24,6 +26,8 @@ interface TopBarProps {
 
 export function TopBar({
   onGatewayClick,
+  onShopClick,
+  coins,
   editMode,
   onToggleEdit,
   onResetLayout,
@@ -105,6 +109,21 @@ export function TopBar({
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Coins */}
+      <div className="flex items-center gap-1 font-pixel text-xs text-pixel-yellow">
+        <img src="/assets/coin.png" alt="coins" className="w-4 h-4" style={{ imageRendering: "pixelated" }} />
+        <span>{coins}</span>
+      </div>
+
+      {/* Boutique */}
+      <button
+        className="font-pixel text-xs px-2 py-1 border text-pixel-yellow border-pixel-yellow hover:bg-pixel-yellow/10 transition-colors"
+        onClick={onShopClick}
+        title="Ouvrir la boutique"
+      >
+        SHOP
+      </button>
 
       <div className="flex items-center gap-2">
         <button

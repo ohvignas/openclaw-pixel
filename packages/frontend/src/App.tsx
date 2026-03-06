@@ -4,11 +4,16 @@ import { TopBar } from "./components/TopBar.tsx";
 import { AgentPanel } from "./components/AgentPanel/index.tsx";
 import { GatewayPanel } from "./components/GatewayPanel/index.tsx";
 import { GatewayConnectScreen } from "./components/GatewayConnectScreen.tsx";
+import { ShopOverlay } from "./components/ShopOverlay.tsx";
+import { InventoryBar } from "./components/InventoryBar.tsx";
+import { AgentScreen } from "./components/AgentScreen/index.tsx";
 import { useAgentStore } from "./store/agentStore.ts";
 import { useGatewayStore, type Instance } from "./store/gatewayStore.ts";
 import { useWorkspaceStore } from "./store/workspaceStore.ts";
+import { useEconomyStore } from "./store/economyStore.ts";
 import { gatewayClient, type GatewayDebugState } from "./openclaw/openclawClient.ts";
 import { parseEvent } from "./openclaw/eventParser.ts";
+import { processCoinEvent } from "./economy/coinEngine.ts";
 import { OfficeState } from "./office/engine/officeState.ts";
 import { loadAssets } from "./canvas/assetLoader.ts";
 import { syncAgentToOffice, removeStaleAgents } from "./canvas/officeBridge.ts";
@@ -106,7 +111,12 @@ export function App() {
     requireManualReconnect,
     clearManualReconnect,
   } = useGatewayStore();
+  const { coins, fetchBalance, fetchInventory } = useEconomyStore();
   const [showGateway, setShowGateway] = useState(false);
+  const [showShop, setShowShop] = useState(false);
+  const [agentScreenId, setAgentScreenId] = useState<string | null>(null);
+  const [deskNames, setDeskNames] = useState<Record<string, string>>({});
+  const [placingItem, setPlacingItem] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [characterImages, setCharacterImages] = useState<HTMLImageElement[]>([]);
   const [office, setOffice] = useState<OfficeState | null>(null);
@@ -253,6 +263,8 @@ export function App() {
         syncAgentsFromHealth((event.payload ?? {}) as GatewayHealthPayload);
       }
 
+      processCoinEvent(event);
+
       const update = parseEvent(event);
       if (update) {
         setAgentStatus(update.agentId, update.status, update.currentTool, update.currentToolDetail);
@@ -292,6 +304,12 @@ export function App() {
       office.cameraFollowId = null;
     }
   }, [status, resetAgents, office]);
+
+  useEffect(() => {
+    if (status !== "connected") return;
+    void fetchBalance();
+    void fetchInventory();
+  }, [status]);
 
   useEffect(() => {
     if (status !== "connected") return;
@@ -498,6 +516,8 @@ export function App() {
         <>
           <TopBar
             onGatewayClick={() => setShowGateway((v) => !v)}
+            onShopClick={() => setShowShop(true)}
+            coins={coins}
             editMode={editMode}
             onToggleEdit={() => setEditMode((v) => !v)}
             onResetLayout={handleResetLayout}
@@ -509,19 +529,49 @@ export function App() {
             onClearCreateAgentError={() => setCreateAgentError(null)}
           />
 
-          <div className="flex flex-1 overflow-hidden">
-            {office && (
-              <OfficeCanvas
-                officeState={office}
-                characterImages={characterImages}
-                editMode={editMode}
-                onLayoutChange={handleLayoutChange}
-                onAgentClick={selectAgent}
+          <div className="flex flex-1 overflow-hidden flex-col">
+            <div className="flex flex-1 overflow-hidden">
+              {office && (
+                <OfficeCanvas
+                  officeState={office}
+                  characterImages={characterImages}
+                  editMode={editMode}
+                  onLayoutChange={handleLayoutChange}
+                  onAgentClick={(agentId) => {
+                    selectAgent(agentId);
+                    setAgentScreenId(agentId);
+                  }}
+                />
+              )}
+              <AgentPanel />
+              {showGateway && <GatewayPanel onClose={() => setShowGateway(false)} />}
+            </div>
+            {editMode && (
+              <InventoryBar
+                selectedItem={placingItem}
+                onSelectItem={setPlacingItem}
               />
             )}
-            <AgentPanel />
-            {showGateway && <GatewayPanel onClose={() => setShowGateway(false)} />}
           </div>
+
+          {showShop && <ShopOverlay onClose={() => setShowShop(false)} />}
+
+          {agentScreenId && (
+            <AgentScreen
+              agentId={agentScreenId}
+              deskName={deskNames[agentScreenId] ?? `Bureau ${agentScreenId}`}
+              onDeskNameChange={(name) =>
+                setDeskNames((prev) => ({ ...prev, [agentScreenId]: name }))
+              }
+              onClose={() => setAgentScreenId(null)}
+              availableAgents={Object.values(agents).map((a) => ({
+                id: a.id,
+                name: a.name,
+                emoji: a.emoji,
+              }))}
+              onChangeAgent={(id) => setAgentScreenId(id)}
+            />
+          )}
         </>
       ) : (
         <GatewayConnectScreen

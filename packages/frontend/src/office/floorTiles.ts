@@ -8,7 +8,7 @@
 
 import type { SpriteData, FloorColor } from './types.ts'
 import { getColorizedSprite, clearColorizeCache } from './colorize.ts'
-import { TILE_SIZE, FALLBACK_FLOOR_COLOR } from '../constants.ts'
+import { TILE_SIZE, FALLBACK_FLOOR_COLOR } from './constants.ts'
 
 /** Default solid gray 16×16 tile used when floors.png is not loaded */
 const DEFAULT_FLOOR_SPRITE: SpriteData = Array.from(

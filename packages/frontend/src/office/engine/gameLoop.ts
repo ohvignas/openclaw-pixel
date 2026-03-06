@@ -1,4 +1,4 @@
-import { MAX_DELTA_TIME_SEC } from '../../constants.ts'
+import { MAX_DELTA_TIME_SEC } from '../constants.ts'
 
 export interface GameLoopCallbacks {
   update: (dt: number) => void

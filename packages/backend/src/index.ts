@@ -6,6 +6,8 @@ import { healthRouter } from "./routes/health.js";
 import { filesRouter } from "./routes/files.js";
 import { clawhubRouter } from "./routes/clawhub.js";
 import { cliRouter } from "./routes/cli.js";
+import { economyRouter } from "./routes/economy.js";
+import { agentsRouter } from "./routes/agents.js";
 import { setupWsProxy } from "./ws-proxy.js";
 
 const app = express();
@@ -15,6 +17,8 @@ app.use("/api", healthRouter);
 app.use("/api/files", filesRouter);
 app.use("/api/clawhub", clawhubRouter);
 app.use("/api/cli", cliRouter);
+app.use("/api/economy", economyRouter);
+app.use("/api/agents", agentsRouter);
 
 // Servir le build frontend en production
 if (process.env.NODE_ENV === "production") {

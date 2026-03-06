@@ -32,10 +32,12 @@ services:
       - "${PORT:-3333}:80"
     volumes:
       - ${HOME}/.openclaw:/home/node/.openclaw
+      - openclaw-db:/app/packages/backend/prisma/data
     environment:
       - OPENCLAW_GATEWAY_URL=ws://openclaw-gateway:18789
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
       - NODE_ENV=production
+      - DATABASE_URL=file:/app/packages/backend/prisma/data/openclaw.db
     depends_on:
       - openclaw-gateway
     networks:
@@ -44,3 +46,6 @@ services:
 networks:
   internal:
     driver: bridge
+
+volumes:
+  openclaw-db:

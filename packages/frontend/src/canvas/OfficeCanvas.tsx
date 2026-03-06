@@ -1,20 +1,48 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { OfficeState } from "./OfficeState.ts";
 import { loadAssets } from "./assetLoader.ts";
 import { useAgentStore } from "../store/agentStore.ts";
 import type { Character } from "./OfficeState.ts";
+import { TileColorPicker } from "../components/TileColorPicker.tsx";
+import { TileType } from "../office/types.ts";
+import type { OfficeLayout, FloorColor } from "../office/types.ts";
 
 const TILE_SIZE = 32;
 
 interface OfficeCanvasProps {
   onAgentClick: (agentId: string) => void;
+  editMode?: boolean;
+  layout?: OfficeLayout;
+  onLayoutChange?: (layout: OfficeLayout) => void;
 }
 
-export function OfficeCanvas({ onAgentClick }: OfficeCanvasProps) {
+/** Convert a hex color string to FloorColor (Photoshop-style Colorize) */
+function hexToFloorColor(hex: string): FloorColor {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  const s = max === min ? 0 : l < 0.5
+    ? (max - min) / (max + min)
+    : (max - min) / (2 - max - min);
+  let h = 0;
+  if (max !== min) {
+    if (max === rn) h = ((gn - bn) / (max - min) + 6) % 6;
+    else if (max === gn) h = (bn - rn) / (max - min) + 2;
+    else h = (rn - gn) / (max - min) + 4;
+    h = h * 60;
+  }
+  return { h, s: s * 100, b: (l - 0.5) * 200, c: 0, colorize: true };
+}
+
+export function OfficeCanvas({ onAgentClick, editMode = false, layout, onLayoutChange }: OfficeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const officeRef = useRef<OfficeState | null>(null);
   const animFrameRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
+  const [colorPicker, setColorPicker] = useState<{ x: number; y: number; tileIndex: number } | null>(null);
 
   const agents = useAgentStore((s) => s.agents);
 
@@ -99,6 +127,24 @@ export function OfficeCanvas({ onAgentClick }: OfficeCanvasProps) {
     const mx = ((e.clientX - rect.left) * scaleX) / TILE_SIZE;
     const my = ((e.clientY - rect.top) * scaleY) / TILE_SIZE;
 
+    // In edit mode, check if a floor or wall tile was clicked
+    if (editMode && layout) {
+      const tileCol = Math.floor(mx);
+      const tileRow = Math.floor(my);
+      if (tileCol >= 0 && tileCol < layout.cols && tileRow >= 0 && tileRow < layout.rows) {
+        const tileIndex = tileRow * layout.cols + tileCol;
+        const tileType = layout.tiles[tileIndex];
+        if (
+          tileType === TileType.WALL ||
+          tileType === TileType.WALL_COLORABLE ||
+          (tileType >= TileType.FLOOR_1 && tileType <= TileType.FLOOR_7)
+        ) {
+          setColorPicker({ x: e.clientX, y: e.clientY, tileIndex });
+          return;
+        }
+      }
+    }
+
     for (const char of office.characters.values()) {
       const dx = Math.abs(char.pos.x - mx);
       const dy = Math.abs(char.pos.y - my);
@@ -109,13 +155,31 @@ export function OfficeCanvas({ onAgentClick }: OfficeCanvasProps) {
     }
   };
 
+  const handleColorSelect = (color: string) => {
+    if (!colorPicker || !layout || !onLayoutChange) return;
+    const { tileIndex } = colorPicker;
+    const tileColors = layout.tileColors ? [...layout.tileColors] : Array(layout.tiles.length).fill(null) as Array<FloorColor | null>;
+    tileColors[tileIndex] = hexToFloorColor(color);
+    onLayoutChange({ ...layout, tileColors });
+  };
+
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full h-full cursor-pointer"
-      onClick={handleClick}
-      aria-label="Office pixel art world"
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full cursor-pointer"
+        onClick={handleClick}
+        aria-label="Office pixel art world"
+      />
+      {colorPicker && (
+        <TileColorPicker
+          x={colorPicker.x}
+          y={colorPicker.y}
+          onSelect={handleColorSelect}
+          onClose={() => setColorPicker(null)}
+        />
+      )}
+    </>
   );
 }
 

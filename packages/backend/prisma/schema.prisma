@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String   @default("Mon OpenClaw")
+  coins     Int      @default(500)
+  createdAt DateTime @default(now())
+
+  inventory    InventoryItem[]
+  transactions CoinTransaction[]
+}
+
+model InventoryItem {
+  id          String    @id @default(cuid())
+  workspaceId String
+  itemId      String
+  quantity    Int       @default(1)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([workspaceId, itemId])
+}
+
+model CoinTransaction {
+  id          String    @id @default(cuid())
+  workspaceId String
+  amount      Int
+  reason      String
+  agentId     String?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+}

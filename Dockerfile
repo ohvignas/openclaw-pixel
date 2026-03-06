@@ -9,6 +9,9 @@ COPY packages/backend/package*.json ./packages/backend/
 # Installer toutes les dépendances
 RUN npm ci
 
+# Générer le client Prisma avant le build
+RUN npx prisma generate --schema=packages/backend/prisma/schema.prisma
+
 # Copier le code source
 COPY packages/ ./packages/
 

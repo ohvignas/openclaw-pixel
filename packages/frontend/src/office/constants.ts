@@ -1,4 +1,11 @@
-import type { FloorColor } from './types.ts'
+
+// ── Pixel Art Color Palette ───────────────────────────────────
+export const PIXEL_PALETTE = [
+  '#1a1a2e', '#16213e', '#0f3460', '#e94560',
+  '#4ade80', '#fbbf24', '#ef4444', '#60a5fa',
+  '#f97316', '#a78bfa', '#34d399', '#f472b6',
+  '#ffffff', '#94a3b8', '#6b7280', '#1f2937',
+]
 
 // ── Grid & Layout ────────────────────────────────────────────
 export const TILE_SIZE = 16

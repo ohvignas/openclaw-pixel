@@ -10,3 +10,9 @@ packages/*/vite.config.d.ts
 instances.json
 .claude/
 .worktrees/
+
+# Prisma SQLite database
+packages/backend/prisma/data/*.db
+packages/backend/prisma/data/*.db-journal
+packages/backend/prisma/data/*.db-wal
+packages/backend/prisma/data/*.db-shm

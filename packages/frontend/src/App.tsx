@@ -3,6 +3,7 @@ import { OfficeCanvas } from "./canvas/OfficeCanvas.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { AgentPanel } from "./components/AgentPanel/index.tsx";
 import { GatewayPanel } from "./components/GatewayPanel/index.tsx";
+import { ShopOverlay } from "./components/ShopOverlay.tsx";
 import { useAgentStore } from "./store/agentStore.ts";
 import { useGatewayStore } from "./store/gatewayStore.ts";
 import { useEconomyStore } from "./store/economyStore.ts";
@@ -14,6 +15,7 @@ export function App() {
   const { setAgentStatus, addEvent, selectAgent } = useAgentStore();
   const { setStatus, activeInstanceId } = useGatewayStore();
   const [showGateway, setShowGateway] = useState(false);
+  const [showShop, setShowShop] = useState(false);
 
   useEffect(() => {
     // Lire le store directement au moment de l'exécution de l'effet
@@ -53,7 +55,7 @@ export function App() {
 
   return (
     <div className="flex flex-col h-screen bg-pixel-bg text-white font-pixel text-xs overflow-hidden">
-      <TopBar onGatewayClick={() => setShowGateway((v) => !v)} />
+      <TopBar onGatewayClick={() => setShowGateway((v) => !v)} onShopClick={() => setShowShop(true)} />
 
       {/* Main area */}
       <div className="flex flex-1 overflow-hidden">
@@ -61,6 +63,7 @@ export function App() {
         <AgentPanel />
         {showGateway && <GatewayPanel onClose={() => setShowGateway(false)} />}
       </div>
+      {showShop && <ShopOverlay onClose={() => setShowShop(false)} />}
     </div>
   );
 }

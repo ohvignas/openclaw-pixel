@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useAgentStore } from "../store/agentStore.ts";
 import { useGatewayStore, type Instance } from "../store/gatewayStore.ts";
+import { useEconomyStore } from "../store/economyStore.ts";
 
-export function TopBar({ onGatewayClick }: { onGatewayClick: () => void }) {
+interface TopBarProps {
+  onGatewayClick: () => void
+  onShopClick: () => void
+}
+
+export function TopBar({ onGatewayClick, onShopClick }: TopBarProps) {
   const status = useGatewayStore((s) => s.status);
   const instances = useGatewayStore((s) => s.instances);
   const activeInstanceId = useGatewayStore((s) => s.activeInstanceId);
@@ -11,6 +17,7 @@ export function TopBar({ onGatewayClick }: { onGatewayClick: () => void }) {
 
   const agents = useAgentStore((s) => s.agents);
   const activeCount = Object.values(agents).filter((a) => a.status === "working").length;
+  const coins = useEconomyStore((s) => s.coins);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newInstance, setNewInstance] = useState<Omit<Instance, "id">>({
@@ -71,6 +78,12 @@ export function TopBar({ onGatewayClick }: { onGatewayClick: () => void }) {
         {activeCount} actif{activeCount !== 1 ? "s" : ""}
       </span>
 
+      {/* Coins */}
+      <div className="flex items-center gap-1">
+        <img src="/assets/coin.png" className="w-4 h-4 object-contain" style={{ imageRendering: 'pixelated' }} alt="coins" />
+        <span className="font-pixel text-xs text-yellow-400">{coins.toLocaleString()}</span>
+      </div>
+
       {/* Spacer */}
       <div className="flex-1" />
 
@@ -98,6 +111,15 @@ export function TopBar({ onGatewayClick }: { onGatewayClick: () => void }) {
           +
         </button>
       </div>
+
+      {/* Bouton SHOP */}
+      <button
+        className="font-pixel text-xs px-2 py-1 border text-yellow-400 border-yellow-600 hover:bg-pixel-bg transition-colors"
+        onClick={onShopClick}
+        title="Boutique"
+      >
+        SHOP
+      </button>
 
       {/* Bouton Gateway settings */}
       <button

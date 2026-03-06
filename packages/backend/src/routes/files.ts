@@ -1,15 +1,11 @@
 import { Router } from "express";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, resolve } from "path";
+import { getAgentWorkspace } from "../lib/openclawPaths.js";
 
 export const filesRouter = Router();
 
-const ALLOWED_FILES = ["AGENTS.md", "SOUL.md", "IDENTITY.md", "USER.md", "TOOLS.md"];
-
-function agentWorkspace(agentId: string): string {
-  const dataPath = process.env.OPENCLAW_DATA_PATH ?? "/data/openclaw";
-  return join(dataPath, "agents", agentId, "workspace");
-}
+const ALLOWED_FILES = ["AGENTS.md", "SOUL.md", "IDENTITY.md", "USER.md", "TOOLS.md", "MEMORY.md", "memory.md", "BOOTSTRAP.md", "HEARTBEAT.md"];
 
 function validatePath(workspace: string, filename: string): string | null {
   const resolvedWorkspace = resolve(workspace);
@@ -18,6 +14,23 @@ function validatePath(workspace: string, filename: string): string | null {
     return null;
   }
   return filePath;
+}
+
+function resolveExistingFilePath(workspace: string, filename: string): string | null {
+  const candidates = filename === "MEMORY.md"
+    ? ["MEMORY.md", "memory.md"]
+    : filename === "memory.md"
+      ? ["memory.md", "MEMORY.md"]
+      : [filename];
+
+  for (const candidate of candidates) {
+    const filePath = validatePath(workspace, candidate);
+    if (filePath && existsSync(filePath)) {
+      return filePath;
+    }
+  }
+
+  return validatePath(workspace, filename);
 }
 
 filesRouter.get("/:agentId/:filename", (req, res) => {
@@ -33,8 +46,8 @@ filesRouter.get("/:agentId/:filename", (req, res) => {
     return;
   }
 
-  const workspace = agentWorkspace(agentId);
-  const filePath = validatePath(workspace, filename);
+  const workspace = getAgentWorkspace(agentId);
+  const filePath = resolveExistingFilePath(workspace, filename);
 
   if (!filePath) {
     res.status(400).json({ error: "Path traversal detected" });
@@ -73,8 +86,8 @@ filesRouter.put("/:agentId/:filename", (req, res) => {
     return;
   }
 
-  const workspace = agentWorkspace(agentId);
-  const filePath = validatePath(workspace, filename);
+  const workspace = getAgentWorkspace(agentId);
+  const filePath = resolveExistingFilePath(workspace, filename);
 
   if (!filePath) {
     res.status(400).json({ error: "Path traversal detected" });

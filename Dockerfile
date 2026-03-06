@@ -5,12 +5,11 @@ WORKDIR /app
 COPY package*.json ./
 COPY packages/frontend/package*.json ./packages/frontend/
 COPY packages/backend/package*.json ./packages/backend/
+# Copier le schema Prisma avant npm ci (nécessaire pour postinstall)
+COPY packages/backend/prisma/schema.prisma ./packages/backend/prisma/schema.prisma
 
-# Installer toutes les dépendances
+# Installer toutes les dépendances (déclenche prisma generate via postinstall)
 RUN npm ci
-
-# Générer le client Prisma avant le build
-RUN npx prisma generate --schema=packages/backend/prisma/schema.prisma
 
 # Copier le code source
 COPY packages/ ./packages/
@@ -27,9 +26,15 @@ RUN apk add --no-cache nginx
 # Copier les manifests pour npm resolve
 COPY package*.json ./
 COPY packages/backend/package*.json ./packages/backend/
+# Copier le schema Prisma (nécessaire pour @prisma/client)
+COPY packages/backend/prisma/schema.prisma ./packages/backend/prisma/schema.prisma
 
-# Installer uniquement les dépendances de production
-RUN npm ci --omit=dev --workspace=packages/backend
+# Installer uniquement les dépendances de production (sans scripts postinstall)
+RUN npm ci --omit=dev --workspace=packages/backend --ignore-scripts
+
+# Copier le client Prisma généré depuis le builder
+COPY --from=builder /app/packages/backend/node_modules/.prisma ./packages/backend/node_modules/.prisma
+COPY --from=builder /app/packages/backend/node_modules/@prisma ./packages/backend/node_modules/@prisma
 
 # Copier les artéfacts buildés
 COPY --from=builder /app/packages/backend/dist ./packages/backend/dist

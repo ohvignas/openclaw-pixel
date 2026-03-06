@@ -6,19 +6,20 @@ import { healthRouter } from "./routes/health.js";
 import { filesRouter } from "./routes/files.js";
 import { clawhubRouter } from "./routes/clawhub.js";
 import { cliRouter } from "./routes/cli.js";
-import { economyRouter } from "./routes/economy.js";
-import { agentsRouter } from "./routes/agents.js";
+import { agentSkillsRouter } from "./routes/agent-skills.js";
+import { toolConnectionsRouter } from "./routes/tool-connections.js";
 import { setupWsProxy } from "./ws-proxy.js";
 
 const app = express();
+app.set("trust proxy", true);
 app.use(cors());
 app.use(express.json());
 app.use("/api", healthRouter);
 app.use("/api/files", filesRouter);
+app.use("/api/agent-skills", agentSkillsRouter);
 app.use("/api/clawhub", clawhubRouter);
 app.use("/api/cli", cliRouter);
-app.use("/api/economy", economyRouter);
-app.use("/api/agents", agentsRouter);
+app.use("/api/tool-connections", toolConnectionsRouter);
 
 // Servir le build frontend en production
 if (process.env.NODE_ENV === "production") {

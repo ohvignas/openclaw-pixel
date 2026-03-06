@@ -6,6 +6,7 @@ const fs = require("fs");
 const os = require("os");
 const { execSync, spawn } = require("child_process");
 const path = require("path");
+const JSON5 = require("json5");
 
 // ─── ANSI colors ────────────────────────────────────────────────────────────
 const c = {
@@ -136,6 +137,24 @@ function askMultiChoice(rl, question, choices) {
   });
 }
 
+function normalizeHttpOrigin(value) {
+  const input = value.trim();
+  if (!input) return "";
+
+  try {
+    const url = new URL(input);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
+    url.hash = "";
+    url.search = "";
+    url.pathname = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return "";
+  }
+}
+
 function log(msg) { console.log(`  ${msg}`); }
 function success(msg) { console.log(`  ${green("✓")} ${msg}`); }
 function info(msg) { console.log(`  ${cyan("→")} ${msg}`); }
@@ -227,7 +246,48 @@ async function main() {
   console.log();
 
   const port = await ask(rl, "Port pour accéder à l'UI dans ton navigateur", "3333");
-  const gatewayToken = await ask(rl, "Token gateway Open Claw (laisse vide si aucun)", "");
+  const deployment = await askChoice(rl, "Tu installes OpenClaw Pixel où ?", [
+    { label: "Machine locale", value: "local", hint: "Mac Mini, PC perso, serveur à usage local" },
+    { label: "VPS / serveur distant", value: "vps", hint: "Accessible depuis un autre navigateur/machine" },
+  ]);
+  console.log();
+
+  let pixelUiOrigin = `http://localhost:${port}`;
+  let gatewayPortBind = "127.0.0.1:18789:18789";
+  if (deployment.value === "vps") {
+    const publicUrl = await ask(
+      rl,
+      "URL publique de l'UI Pixel (ex: https://openclaw.mondomaine.com ou http://1.2.3.4:3333)"
+    );
+    pixelUiOrigin = normalizeHttpOrigin(publicUrl);
+    if (!pixelUiOrigin) {
+      warn("URL invalide. Fallback sur http://localhost pour éviter de bloquer l'installation.");
+      pixelUiOrigin = `http://localhost:${port}`;
+    }
+    console.log();
+
+    const gatewayExposure = await askChoice(rl, "Exposer le port gateway 18789 sur Internet ?", [
+      {
+        label: "Non, UI seulement",
+        value: "private",
+        hint: "Recommandé — le navigateur passe par le proxy backend",
+      },
+      {
+        label: "Oui, exposer 18789",
+        value: "public",
+        hint: "Pour accès direct / webhooks — firewall obligatoire",
+      },
+    ]);
+    gatewayPortBind =
+      gatewayExposure.value === "public"
+        ? "18789:18789"
+        : "127.0.0.1:18789:18789";
+    console.log();
+  }
+
+  // Token généré automatiquement (256 bits aléatoires) — synchronisé entre openclaw.json et .env
+  const gatewayToken = require("crypto").randomBytes(32).toString("hex");
+  info(`Token gateway généré automatiquement`);
   console.log();
 
   // ── 4. Channels ───────────────────────────────────────────────────────────
@@ -308,6 +368,8 @@ async function main() {
   envLines.push("# Gateway Open Claw");
   envLines.push("OPENCLAW_GATEWAY_URL=ws://openclaw-gateway:18789");
   envLines.push(`OPENCLAW_GATEWAY_TOKEN=${gatewayToken}`);
+  envLines.push(`PIXEL_UI_ORIGIN=${pixelUiOrigin}`);
+  envLines.push(`OPENCLAW_GATEWAY_PORT_BIND=${gatewayPortBind}`);
 
   envLines.push("");
   envLines.push("# UI");
@@ -338,13 +400,37 @@ async function main() {
   let existingConfig = {};
   if (fs.existsSync(openclawConfigPath)) {
     try {
-      existingConfig = JSON.parse(fs.readFileSync(openclawConfigPath, "utf8"));
+      existingConfig = JSON5.parse(fs.readFileSync(openclawConfigPath, "utf8"));
     } catch {
       // Config corrompue ou JSON5 avec commentaires — on part de zéro
     }
   }
 
   const config = JSON.parse(JSON.stringify(existingConfig)); // deep copy
+
+  // Gateway
+  if (!config.gateway) config.gateway = {};
+  config.gateway.mode = "local";
+  config.gateway.bind = "lan";
+  config.gateway.auth = {
+    ...(config.gateway.auth || {}),
+    mode: "token",
+    token: gatewayToken,
+  };
+  config.gateway.controlUi = {
+    enabled: true,
+    ...(config.gateway.controlUi || {}),
+    allowedOrigins: Array.from(new Set([
+      ...(Array.isArray(config.gateway.controlUi?.allowedOrigins)
+        ? config.gateway.controlUi.allowedOrigins
+        : []),
+      `http://localhost:${port}`,
+      `http://127.0.0.1:${port}`,
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      pixelUiOrigin,
+    ])),
+  };
 
   // Provider
   if (provider.value !== "ollama" && apiKey && apiKey.length >= 10) {
@@ -433,12 +519,20 @@ async function main() {
   console.log();
   console.log("  " + bold(green("Tout est prêt !")));
   console.log();
-  success(`Interface disponible sur ${bold(cyan(`http://localhost:${port}`))} — ouvre dans ton navigateur`);
+  success(`Interface disponible sur ${bold(cyan(pixelUiOrigin))} — ouvre dans ton navigateur`);
+  info(`Mode d'installation : ${deployment.label}`);
   if (channels.length > 0) {
     success(`Canaux configurés : ${channels.map((c) => c.label).join(", ")}`);
     info("Pour activer les canaux dans Open Claw, ouvre l'UI → bouton ⚙ → Canaux");
   } else {
     info("Tu peux ajouter des canaux plus tard : bouton ⚙ en haut → Canaux");
+  }
+  if (deployment.value === "vps") {
+    if (gatewayPortBind === "18789:18789") {
+      warn("Le port gateway 18789 est exposé. Mets un firewall/reverse proxy strict avant usage public.");
+    } else {
+      info("Le port gateway 18789 reste privé côté hôte. L'UI passe par le proxy backend.");
+    }
   }
   info(`Pour voir les logs : ${gray("docker compose logs -f")}`);
   info(`Pour arrêter : ${gray("docker compose down")}`);

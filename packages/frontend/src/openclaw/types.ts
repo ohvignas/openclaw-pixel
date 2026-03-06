@@ -8,6 +8,9 @@ export interface AgentState {
   currentTool?: string;
   currentToolDetail?: string;
   model?: string;
+  sessionKey?: string;
+  isDefault?: boolean;
+  assignedSeatId?: string;
 }
 
 export interface AgentEvent {

@@ -1,4 +1,4 @@
-import { TILE_SIZE, MATRIX_EFFECT_DURATION, CharacterState, Direction } from '../types'
+import { TILE_SIZE, MATRIX_EFFECT_DURATION, CharacterState, Direction, TileType } from '../types'
 import {
   PALETTE_COUNT,
   HUE_SHIFT_MIN_DEG,
@@ -61,6 +61,167 @@ export class OfficeState {
     return this.layout
   }
 
+  setLayout(layout: OfficeLayout): void {
+    this.layout = layout
+    this.refreshLayoutState()
+  }
+
+  private refreshLayoutState(): void {
+    this.tileMap = layoutToTileMap(this.layout)
+    this.seats = layoutToSeats(this.layout.furniture)
+    this.blockedTiles = getBlockedTiles(this.layout.furniture)
+    this.walkableTiles = getWalkableTiles(this.tileMap, this.blockedTiles)
+    this.rebuildFurnitureInstances()
+  }
+
+  getFurnitureAtTile(tileCol: number, tileRow: number): PlacedFurniture | null {
+    for (let i = this.layout.furniture.length - 1; i >= 0; i--) {
+      const item = this.layout.furniture[i]
+      const entry = getCatalogEntry(item.type)
+      if (!entry) continue
+      if (
+        tileCol >= item.col &&
+        tileCol < item.col + entry.footprintW &&
+        tileRow >= item.row &&
+        tileRow < item.row + entry.footprintH
+      ) {
+        return item
+      }
+    }
+    return null
+  }
+
+  moveFurniture(uid: string, col: number, row: number): boolean {
+    const index = this.layout.furniture.findIndex((item) => item.uid === uid)
+    if (index === -1) return false
+    const current = this.layout.furniture[index]
+    if (current.col === col && current.row === row) return true
+
+    const moved: PlacedFurniture = { ...current, col, row }
+    if (!this.canPlaceFurniture(moved)) return false
+
+    const furniture = [...this.layout.furniture]
+    furniture[index] = moved
+    this.layout = { ...this.layout, furniture }
+    this.refreshLayoutState()
+    return true
+  }
+
+  addFurniture(type: string, col: number, row: number): string | null {
+    const uid = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const item: PlacedFurniture = { uid, type, col, row }
+    if (!this.canPlaceFurniture(item)) return null
+
+    this.layout = {
+      ...this.layout,
+      furniture: [...this.layout.furniture, item],
+    }
+    this.refreshLayoutState()
+    return uid
+  }
+
+  removeFurniture(uid: string): boolean {
+    const nextFurniture = this.layout.furniture.filter((item) => item.uid !== uid)
+    if (nextFurniture.length === this.layout.furniture.length) return false
+    this.layout = { ...this.layout, furniture: nextFurniture }
+    this.refreshLayoutState()
+    return true
+  }
+
+  private canPlaceFurniture(item: PlacedFurniture): boolean {
+    const entry = getCatalogEntry(item.type)
+    if (!entry) return false
+    const bgRows = entry.backgroundTiles || 0
+
+    for (let dr = 0; dr < entry.footprintH; dr++) {
+      for (let dc = 0; dc < entry.footprintW; dc++) {
+        const tileCol = item.col + dc
+        const tileRow = item.row + dr
+        const tile = this.tileMap[tileRow]?.[tileCol]
+        if (tile === undefined || tile === TileType.VOID) return false
+        if (entry.canPlaceOnWalls) {
+          if (tile !== TileType.WALL) return false
+        } else if (tile === TileType.WALL) {
+          return false
+        }
+
+        let hasSupportingDesk = false
+        for (const other of this.layout.furniture) {
+          if (other.uid === item.uid) continue
+          const otherEntry = getCatalogEntry(other.type)
+          if (!otherEntry) continue
+
+          const overlapsTile =
+            tileCol >= other.col &&
+            tileCol < other.col + otherEntry.footprintW &&
+            tileRow >= other.row &&
+            tileRow < other.row + otherEntry.footprintH
+
+          if (!overlapsTile) continue
+
+          if (entry.canPlaceOnSurfaces && otherEntry.isDesk) {
+            hasSupportingDesk = true
+            continue
+          }
+
+          if (dr >= bgRows) {
+            return false
+          }
+        }
+
+        if (entry.canPlaceOnSurfaces && dr >= bgRows && !hasSupportingDesk) {
+          return false
+        }
+      }
+    }
+
+    return true
+  }
+
+  private collectDeskTiles(): Set<string> {
+    const tiles = new Set<string>()
+    for (const item of this.layout.furniture) {
+      const entry = getCatalogEntry(item.type)
+      if (!entry?.isDesk) continue
+      for (let dr = 0; dr < entry.footprintH; dr++) {
+        for (let dc = 0; dc < entry.footprintW; dc++) {
+          tiles.add(`${item.col + dc},${item.row + dr}`)
+        }
+      }
+    }
+    return tiles
+  }
+
+  private seatFacesDesk(seat: Seat): boolean {
+    const deskTiles = this.collectDeskTiles()
+    const dCol = seat.facingDir === Direction.RIGHT ? 1 : seat.facingDir === Direction.LEFT ? -1 : 0
+    const dRow = seat.facingDir === Direction.DOWN ? 1 : seat.facingDir === Direction.UP ? -1 : 0
+
+    for (let depth = 1; depth <= AUTO_ON_FACING_DEPTH; depth++) {
+      const baseCol = seat.seatCol + dCol * depth
+      const baseRow = seat.seatRow + dRow * depth
+      if (deskTiles.has(`${baseCol},${baseRow}`)) return true
+      for (let side = 1; side <= AUTO_ON_SIDE_DEPTH; side++) {
+        if (dCol !== 0) {
+          if (deskTiles.has(`${baseCol},${baseRow - side}`)) return true
+          if (deskTiles.has(`${baseCol},${baseRow + side}`)) return true
+        } else {
+          if (deskTiles.has(`${baseCol - side},${baseRow}`)) return true
+          if (deskTiles.has(`${baseCol + side},${baseRow}`)) return true
+        }
+      }
+    }
+
+    return false
+  }
+
+  getAssignableSeatIds(): string[] {
+    return Array.from(this.seats.values())
+      .filter((seat) => this.seatFacesDesk(seat))
+      .sort((a, b) => a.seatRow - b.seatRow || a.seatCol - b.seatCol || a.uid.localeCompare(b.uid))
+      .map((seat) => seat.uid)
+  }
+
   /** Get the blocked-tile key for a character's own seat, or null */
   private ownSeatKey(ch: Character): string | null {
     if (!ch.seatId) return null
@@ -83,6 +244,42 @@ export class OfficeState {
       if (!seat.assigned) return uid
     }
     return null
+  }
+
+  assignAgentSeat(agentId: string, seatId: string): boolean {
+    const ch = this.characters.get(agentId)
+    const nextSeat = this.seats.get(seatId)
+    if (!ch || !nextSeat) return false
+    if (ch.seatId === seatId) {
+      nextSeat.assigned = true
+      return true
+    }
+    if (nextSeat.assigned) return false
+
+    if (ch.seatId) {
+      const currentSeat = this.seats.get(ch.seatId)
+      if (currentSeat) currentSeat.assigned = false
+    }
+
+    nextSeat.assigned = true
+    ch.seatId = seatId
+    ch.dir = nextSeat.facingDir
+    ch.seatTimer = 0
+
+    if (ch.tileCol === nextSeat.seatCol && ch.tileRow === nextSeat.seatRow) {
+      ch.x = nextSeat.seatCol * TILE_SIZE + TILE_SIZE / 2
+      ch.y = nextSeat.seatRow * TILE_SIZE + TILE_SIZE / 2
+      ch.state = CharacterState.TYPE
+      ch.path = []
+      ch.moveProgress = 0
+      ch.frame = 0
+      ch.frameTimer = 0
+    } else {
+      this.sendToSeat(agentId)
+    }
+
+    this.rebuildFurnitureInstances()
+    return true
   }
 
   /**
@@ -157,6 +354,7 @@ export class OfficeState {
       ch.matrixEffectSeeds = matrixEffectSeeds()
     }
     this.characters.set(id, ch)
+    this.rebuildFurnitureInstances()
   }
 
   removeAgent(id: string): void {
@@ -175,6 +373,7 @@ export class OfficeState {
     ch.matrixEffectTimer = 0
     ch.matrixEffectSeeds = matrixEffectSeeds()
     ch.bubbleType = null
+    this.rebuildFurnitureInstances()
   }
 
   /** Send an agent back to their currently assigned seat */
@@ -360,6 +559,9 @@ export class OfficeState {
     // Remove characters that finished despawn
     for (const id of toDelete) {
       this.characters.delete(id)
+    }
+    if (toDelete.length > 0) {
+      this.rebuildFurnitureInstances()
     }
   }
 

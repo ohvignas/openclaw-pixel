@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const AGENT_FILES = ["AGENTS.md", "SOUL.md", "IDENTITY.md", "USER.md"] as const;
+const AGENT_FILES = ["AGENTS.md", "SOUL.md", "IDENTITY.md", "USER.md", "TOOLS.md", "MEMORY.md", "BOOTSTRAP.md", "HEARTBEAT.md"] as const;
 type AgentFile = typeof AGENT_FILES[number];
 
 export function FilesTab({ agentId }: { agentId: string }) {

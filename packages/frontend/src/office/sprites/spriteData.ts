@@ -55,35 +55,35 @@ export const DESK_SQUARE_SPRITE: SpriteData = (() => {
 
 /** Plant in pot: 16x24 */
 export const PLANT_SPRITE: SpriteData = (() => {
-  const G = '#3D8B37'
-  const D = '#2D6B27'
-  const T = '#6B4E0A'
-  const P = '#B85C3A'
-  const R = '#8B4422'
+  const L = '#7FAE46'
+  const G = '#5D8D32'
+  const P = '#C67A46'
+  const R = '#8E4F28'
+  const S = '#6F3E1D'
   return [
-    [_, _, _, _, _, _, G, G, _, _, _, _, _, _, _, _],
-    [_, _, _, _, _, G, G, G, G, _, _, _, _, _, _, _],
-    [_, _, _, _, G, G, D, G, G, G, _, _, _, _, _, _],
-    [_, _, _, G, G, D, G, G, D, G, G, _, _, _, _, _],
-    [_, _, G, G, G, G, G, G, G, G, G, G, _, _, _, _],
-    [_, G, G, D, G, G, G, G, G, G, D, G, G, _, _, _],
-    [_, G, G, G, G, D, G, G, D, G, G, G, G, _, _, _],
-    [_, _, G, G, G, G, G, G, G, G, G, G, _, _, _, _],
-    [_, _, _, G, G, G, D, G, G, G, G, _, _, _, _, _],
-    [_, _, _, _, G, G, G, G, G, G, _, _, _, _, _, _],
-    [_, _, _, _, _, G, G, G, G, _, _, _, _, _, _, _],
-    [_, _, _, _, _, _, T, T, _, _, _, _, _, _, _, _],
-    [_, _, _, _, _, _, T, T, _, _, _, _, _, _, _, _],
-    [_, _, _, _, _, _, T, T, _, _, _, _, _, _, _, _],
-    [_, _, _, _, _, R, R, R, R, R, _, _, _, _, _, _],
-    [_, _, _, _, R, P, P, P, P, P, R, _, _, _, _, _],
-    [_, _, _, _, R, P, P, P, P, P, R, _, _, _, _, _],
-    [_, _, _, _, R, P, P, P, P, P, R, _, _, _, _, _],
-    [_, _, _, _, R, P, P, P, P, P, R, _, _, _, _, _],
+    [_, _, _, _, _, _, _, G, _, _, _, _, _, _, _, _],
+    [_, _, _, _, _, _, G, L, G, _, _, _, _, _, _, _],
+    [_, _, _, _, _, G, L, L, L, G, _, _, _, _, _, _],
+    [_, _, _, _, G, L, L, L, L, L, G, _, _, _, _, _],
+    [_, _, _, _, G, L, L, L, L, L, G, _, _, _, _, _],
+    [_, _, _, G, L, L, L, L, L, L, L, G, _, _, _, _],
+    [_, _, _, G, L, L, L, L, L, L, L, G, _, _, _, _],
+    [_, _, _, G, G, L, L, L, L, L, G, G, _, _, _, _],
+    [_, _, _, _, G, G, L, L, L, G, G, _, _, _, _, _],
+    [_, _, _, _, _, G, G, L, G, G, _, _, _, _, _, _],
+    [_, _, _, _, _, _, G, G, G, _, _, _, _, _, _, _],
+    [_, _, _, _, _, _, _, S, _, _, _, _, _, _, _, _],
+    [_, _, _, _, _, _, _, S, _, _, _, _, _, _, _, _],
+    [_, _, _, _, _, _, _, S, _, _, _, _, _, _, _, _],
+    [_, _, _, _, _, _, R, R, R, _, _, _, _, _, _, _],
+    [_, _, _, _, _, R, P, P, P, R, _, _, _, _, _, _],
+    [_, _, _, _, _, R, P, P, P, R, _, _, _, _, _, _],
+    [_, _, _, _, _, R, P, P, P, R, _, _, _, _, _, _],
     [_, _, _, _, R, P, P, P, P, P, R, _, _, _, _, _],
     [_, _, _, _, R, P, P, P, P, P, R, _, _, _, _, _],
     [_, _, _, _, _, R, P, P, P, R, _, _, _, _, _, _],
     [_, _, _, _, _, _, R, R, R, _, _, _, _, _, _, _],
+    [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
     [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
   ]
 })()
@@ -987,19 +987,28 @@ export const CHARACTER_TEMPLATES = {
 // Loaded character sprites (from PNG assets)
 // ════════════════════════════════════════════════════════════════
 
-interface LoadedCharacterData {
+export interface LoadedCharacterData {
   down: SpriteData[]
   up: SpriteData[]
   right: SpriteData[]
 }
 
 let loadedCharacters: LoadedCharacterData[] | null = null
+let loadedCharacterShadow: SpriteData | null = null
 
 /** Set pre-colored character sprites loaded from PNG assets. Call this when characterSpritesLoaded message arrives. */
 export function setCharacterTemplates(data: LoadedCharacterData[]): void {
   loadedCharacters = data
   // Clear cache so sprites are rebuilt from loaded data
   spriteCache.clear()
+}
+
+export function setCharacterShadow(sprite: SpriteData | null): void {
+  loadedCharacterShadow = sprite
+}
+
+export function getCharacterShadow(): SpriteData | null {
+  return loadedCharacterShadow
 }
 
 /** Flip a SpriteData horizontally (for generating left sprites from right) */
@@ -1055,14 +1064,16 @@ export function getCharacterSprites(paletteIndex: number, hueShift = 0): Charact
   if (cached) return cached
 
   let sprites: CharacterSprites
+  let allowHueShift = true
 
   if (loadedCharacters) {
     // Use pre-colored character sprites directly (no palette swapping)
-    const char = loadedCharacters[paletteIndex % loadedCharacters.length]
+    const char = loadedCharacters[0]
     const d = char.down
     const u = char.up
     const rt = char.right
     const flip = flipSpriteHorizontal
+    allowHueShift = false
 
     sprites = {
       walk: {
@@ -1113,7 +1124,7 @@ export function getCharacterSprites(paletteIndex: number, hueShift = 0): Charact
   }
 
   // Apply hue shift if non-zero
-  if (hueShift !== 0) {
+  if (allowHueShift && hueShift !== 0) {
     sprites = hueShiftSprites(sprites, hueShift)
   }
 

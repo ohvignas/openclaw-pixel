@@ -26,10 +26,10 @@ export function AgentPanel() {
   const selectedAgentId = useAgentStore((s) => s.selectedAgentId);
   const agents = useAgentStore((s) => s.agents);
   const selectAgent = useAgentStore((s) => s.selectAgent);
-  const [activeTab, setActiveTab] = useState<TabId>("live");
+  const [activeTab, setActiveTab] = useState<TabId>("chat");
 
   useEffect(() => {
-    setActiveTab("live");
+    setActiveTab("chat");
   }, [selectedAgentId]);
 
   if (!selectedAgentId) return null;
@@ -43,7 +43,7 @@ export function AgentPanel() {
     "text-gray-400";
 
   return (
-    <div className="w-96 bg-pixel-panel border-l border-pixel-border flex flex-col h-full shrink-0">
+    <div className="w-[min(56rem,72vw)] min-w-[50rem] bg-pixel-panel border-l border-pixel-border flex flex-col h-full shrink-0">
       {/* En-tête agent */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-pixel-border shrink-0">
         <div className="flex items-center gap-2">
@@ -51,6 +51,7 @@ export function AgentPanel() {
           <div>
             <div className="font-pixel text-xs text-white">{agent.name}</div>
             <div className={`font-pixel text-xs ${statusColor}`}>{agent.status}</div>
+            <div className="font-pixel text-[10px] text-gray-500">{agent.id}</div>
           </div>
         </div>
         <button

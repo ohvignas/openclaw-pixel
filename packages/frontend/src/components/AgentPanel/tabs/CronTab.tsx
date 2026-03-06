@@ -1,59 +1,111 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { gatewayClient } from "../../../openclaw/openclawClient.ts";
 
-interface CronJob {
-  id: string;
-  schedule: string;
-  description?: string;
-  enabled: boolean;
-  nextRun?: string;
+interface CronPayload {
+  jobs?: unknown;
+  total?: number;
 }
 
-export function CronTab({ agentId: _agentId }: { agentId: string }) {
-  const [jobs, setJobs] = useState<CronJob[]>([]);
+interface CronJob {
+  id?: string;
+  title?: string;
+  name?: string;
+  description?: string;
+  enabled?: boolean;
+  agentId?: string;
+  schedule?: unknown;
+}
+
+export function CronTab({ agentId }: { agentId: string }) {
+  const [payload, setPayload] = useState<CronPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // TODO: filtrer par agent quand l'API supporte l'agentId
-    fetch("/api/cli/run/hooks:list")
-      .then((r) => r.json())
-      .then((d: { items?: CronJob[] }) => setJobs(Array.isArray(d) ? d : (d.items ?? [])))
-      .catch(() => setJobs([]))
-      .finally(() => setLoading(false));
-  }, [_agentId]);
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    gatewayClient.request<CronPayload>("cron.list", {})
+      .then((value) => {
+        if (!cancelled) setPayload(value);
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message || "Impossible de charger les cron jobs.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="p-3 flex items-center justify-center">
-        <span className="font-pixel text-xs text-gray-600">Chargement...</span>
-      </div>
-    );
-  }
+  const jobs = normalizeJobs(payload?.jobs).filter((job) => !job.agentId || job.agentId === agentId);
 
   return (
     <div className="p-3 space-y-2">
-      {jobs.length === 0 ? (
-        <p className="font-pixel text-xs text-gray-600">Aucun cron job configuré</p>
-      ) : (
-        jobs.map((job) => (
-          <div key={job.id} className="bg-pixel-bg border border-pixel-border p-2">
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="font-pixel text-xs text-white">{job.id}</div>
-                <div className="font-pixel text-xs text-gray-500 mt-1">{job.schedule}</div>
-                {job.description && (
-                  <div className="font-pixel text-xs text-gray-600 mt-1">{job.description}</div>
-                )}
-              </div>
-              <div
-                className={`w-3 h-3 rounded-full shrink-0 mt-1 ${
-                  job.enabled ? "bg-pixel-green" : "bg-gray-600"
-                }`}
-                title={job.enabled ? "Actif" : "Inactif"}
-              />
-            </div>
-          </div>
-        ))
+      <div className="font-pixel text-xs text-gray-500">Agent: {agentId}</div>
+      {loading && <p className="font-pixel text-xs text-gray-600">Chargement...</p>}
+      {error && <p className="font-pixel text-xs text-pixel-red">{error}</p>}
+      {!loading && !error && jobs.length === 0 && (
+        <p className="font-pixel text-xs text-gray-600">Aucun cron job configure dans Open Claw.</p>
       )}
+      <div className="space-y-2">
+        {jobs.map((job) => (
+          <div key={job.id} className="border border-pixel-border bg-pixel-bg p-2">
+            <div className="font-pixel text-xs text-white">{job.title ?? job.name ?? job.id}</div>
+            <div className="mt-1 font-pixel text-[10px] text-gray-500">
+              {formatSchedule(job.schedule)} · {job.enabled === false ? "desactive" : "active"}
+            </div>
+            {job.description && (
+              <div className="mt-1 font-pixel text-[10px] text-gray-600">{job.description}</div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
+}
+
+function normalizeJobs(value: unknown): CronJob[] {
+  if (Array.isArray(value)) return value.filter(isCronJob);
+  if (!value || typeof value !== "object") return [];
+  return Object.values(value).filter(isCronJob);
+}
+
+function isCronJob(value: unknown): value is CronJob {
+  return Boolean(value && typeof value === "object");
+}
+
+function formatSchedule(schedule: unknown): string {
+  if (typeof schedule === "string") return schedule;
+  if (!schedule || typeof schedule !== "object") return "schedule inconnu";
+
+  const record = schedule as Record<string, unknown>;
+  const kind = typeof record.kind === "string" ? record.kind : null;
+
+  if (kind === "at") {
+    return typeof record.at === "string" ? `at ${record.at}` : "at";
+  }
+  if (kind === "every") {
+    return typeof record.everyMs === "number" ? `every ${formatDuration(record.everyMs)}` : "every";
+  }
+  if (kind === "cron") {
+    const expr = typeof record.expr === "string" ? record.expr : "cron";
+    const tz = typeof record.tz === "string" ? ` (${record.tz})` : "";
+    return `${expr}${tz}`;
+  }
+
+  try {
+    return JSON.stringify(schedule);
+  } catch {
+    return "schedule inconnu";
+  }
+}
+
+function formatDuration(ms: number): string {
+  if (ms % 3600000 === 0) return `${ms / 3600000}h`;
+  if (ms % 60000 === 0) return `${ms / 60000}m`;
+  if (ms % 1000 === 0) return `${ms / 1000}s`;
+  return `${ms}ms`;
 }

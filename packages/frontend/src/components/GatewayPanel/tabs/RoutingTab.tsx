@@ -7,22 +7,38 @@ interface Binding {
   agentName?: string;
 }
 
+function isBinding(value: Binding | null): value is Binding {
+  return value !== null;
+}
+
 export function RoutingTab() {
   const [bindings, setBindings] = useState<Binding[]>([]);
   const [loading, setLoading] = useState(true);
-  const [channel, setChannel] = useState("");
-  const [agentId, setAgentId] = useState("");
-  const [adding, setAdding] = useState(false);
 
   const fetchBindings = () => {
-    fetch("/api/cli/run/routing:list")
+    fetch("/api/cli/run/agents:bindings")
       .then((r) => {
         if (!r.ok) return [];
         return r.json();
       })
-      .then((d: Binding[] | { items?: Binding[] } | null) => {
+      .then((d: Array<Record<string, unknown>> | { items?: Array<Record<string, unknown>> } | null) => {
         if (!d) { setBindings([]); return; }
-        setBindings(Array.isArray(d) ? d : (d.items ?? []));
+        const items = Array.isArray(d) ? d : (d.items ?? []);
+        setBindings(
+          items
+            .map<Binding | null>((item) => {
+              const channel = String(item.channel ?? item.bind ?? item.binding ?? "");
+              const agentId = String(item.agentId ?? item.agent ?? "");
+              if (!channel || !agentId) return null;
+              return {
+                id: String(item.id ?? `${agentId}:${channel}`),
+                channel,
+                agentId,
+                agentName: typeof item.agentName === "string" ? item.agentName : undefined,
+              };
+            })
+            .filter(isBinding)
+        );
       })
       .catch(() => setBindings([]))
       .finally(() => setLoading(false));
@@ -31,37 +47,6 @@ export function RoutingTab() {
   useEffect(() => {
     fetchBindings();
   }, []);
-
-  const addBinding = async () => {
-    if (!channel.trim() || !agentId.trim()) return;
-    setAdding(true);
-    try {
-      const res = await fetch("/api/cli/routing/bind", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel: channel.trim(), agentId: agentId.trim() }),
-      });
-      if (!res.ok) return;
-      setChannel("");
-      setAgentId("");
-      await fetchBindings();
-    } catch {
-      // ignore silently
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const removeBinding = async (id: string) => {
-    try {
-      await fetch(`/api/cli/routing/unbind/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
-      setBindings((bs) => bs.filter((b) => b.id !== id));
-    } catch {
-      // ignore silently
-    }
-  };
 
   if (loading) {
     return (
@@ -73,6 +58,10 @@ export function RoutingTab() {
 
   return (
     <div className="p-3 space-y-3">
+      <div className="font-pixel text-xs text-gray-500">
+        Vue lecture seule. L'edition des bindings n'est pas encore branchee au backend.
+      </div>
+
       {/* Binding list */}
       <div className="space-y-2">
         {bindings.length === 0 ? (
@@ -90,40 +79,9 @@ export function RoutingTab() {
                   {binding.agentName ?? binding.agentId}
                 </span>
               </div>
-              <button
-                onClick={() => removeBinding(binding.id)}
-                className="shrink-0 font-pixel text-xs text-pixel-red hover:opacity-70"
-                title="Supprimer"
-              >
-                🗑️
-              </button>
             </div>
           ))
         )}
-      </div>
-
-      {/* Add binding form */}
-      <div className="border-t border-pixel-border pt-3 space-y-2">
-        <div className="font-pixel text-xs text-gray-400">Ajouter un binding</div>
-        <input
-          className="w-full bg-pixel-bg border border-pixel-border text-white font-pixel text-xs px-2 py-1 focus:outline-none focus:border-pixel-accent"
-          placeholder="Canal"
-          value={channel}
-          onChange={(e) => setChannel(e.target.value)}
-        />
-        <input
-          className="w-full bg-pixel-bg border border-pixel-border text-white font-pixel text-xs px-2 py-1 focus:outline-none focus:border-pixel-accent"
-          placeholder="Agent ID"
-          value={agentId}
-          onChange={(e) => setAgentId(e.target.value)}
-        />
-        <button
-          onClick={addBinding}
-          disabled={adding || !channel.trim() || !agentId.trim()}
-          className="w-full bg-pixel-accent text-white font-pixel text-xs py-1 hover:opacity-80 disabled:opacity-50"
-        >
-          {adding ? "..." : "Ajouter"}
-        </button>
       </div>
     </div>
   );

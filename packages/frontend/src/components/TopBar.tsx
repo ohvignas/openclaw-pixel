@@ -1,16 +1,39 @@
 import { useState, useEffect, useRef } from "react";
 import { useAgentStore } from "../store/agentStore.ts";
 import { useGatewayStore, type Instance } from "../store/gatewayStore.ts";
-import { useEconomyStore } from "../store/economyStore.ts";
+import { CreateAgentDialog } from "./CreateAgentDialog.tsx";
+
+interface DeskOption {
+  seatId: string;
+  label: string;
+  assignedAgentId: string | null;
+}
 
 interface TopBarProps {
   onGatewayClick: () => void
-  onShopClick: () => void
-  onEditToggle?: () => void
-  editMode?: boolean
+  editMode: boolean
+  onToggleEdit: () => void
+  onResetLayout: () => void
+  onDisconnect: () => void
+  deskOptions: DeskOption[]
+  onCreateAgent: (input: { agentId: string; name: string; emoji: string; seatId: string }) => Promise<boolean>
+  creatingAgent: boolean
+  createAgentError: string | null
+  onClearCreateAgentError: () => void
 }
 
-export function TopBar({ onGatewayClick, onShopClick, onEditToggle, editMode }: TopBarProps) {
+export function TopBar({
+  onGatewayClick,
+  editMode,
+  onToggleEdit,
+  onResetLayout,
+  onDisconnect,
+  deskOptions,
+  onCreateAgent,
+  creatingAgent,
+  createAgentError,
+  onClearCreateAgentError,
+}: TopBarProps) {
   const status = useGatewayStore((s) => s.status);
   const instances = useGatewayStore((s) => s.instances);
   const activeInstanceId = useGatewayStore((s) => s.activeInstanceId);
@@ -19,9 +42,9 @@ export function TopBar({ onGatewayClick, onShopClick, onEditToggle, editMode }: 
 
   const agents = useAgentStore((s) => s.agents);
   const activeCount = Object.values(agents).filter((a) => a.status === "working").length;
-  const coins = useEconomyStore((s) => s.coins);
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showCreateAgent, setShowCreateAgent] = useState(false);
   const [newInstance, setNewInstance] = useState<Omit<Instance, "id">>({
     name: "",
     url: "ws://",
@@ -80,14 +103,36 @@ export function TopBar({ onGatewayClick, onShopClick, onEditToggle, editMode }: 
         {activeCount} actif{activeCount !== 1 ? "s" : ""}
       </span>
 
-      {/* Coins */}
-      <div className="flex items-center gap-1">
-        <img src="/assets/coin.png" className="w-4 h-4 object-contain" style={{ imageRendering: 'pixelated' }} alt="coins" />
-        <span className="font-pixel text-xs text-yellow-400">{coins.toLocaleString()}</span>
-      </div>
-
       {/* Spacer */}
       <div className="flex-1" />
+
+      <div className="flex items-center gap-2">
+        <button
+          className="font-pixel text-xs px-2 py-1 border text-pixel-accent border-pixel-accent hover:bg-pixel-bg transition-colors"
+          onClick={() => setShowCreateAgent(true)}
+          title="Creer un agent Open Claw"
+        >
+          + AGENT
+        </button>
+        <button
+          className={`font-pixel text-xs px-2 py-1 border transition-colors ${
+            editMode
+              ? "text-pixel-green border-pixel-green bg-pixel-bg"
+              : "text-gray-500 hover:text-pixel-green border-pixel-border hover:border-pixel-green"
+          }`}
+          onClick={onToggleEdit}
+          title="Activer le mode edition du bureau"
+        >
+          {editMode ? "EDIT ON" : "EDIT"}
+        </button>
+        <button
+          className="text-gray-500 hover:text-white font-pixel text-xs px-2 py-1 border border-pixel-border hover:border-white transition-colors"
+          onClick={onResetLayout}
+          title="Reinitialiser le layout du bureau"
+        >
+          RESET
+        </button>
+      </div>
 
       {/* Sélecteur d'instances */}
       <div className="flex items-center gap-2">
@@ -114,30 +159,6 @@ export function TopBar({ onGatewayClick, onShopClick, onEditToggle, editMode }: 
         </button>
       </div>
 
-      {/* Bouton EDIT */}
-      {onEditToggle && (
-        <button
-          className={`font-pixel text-xs px-2 py-1 border transition-colors ${
-            editMode
-              ? 'text-pixel-accent border-pixel-accent bg-pixel-border'
-              : 'text-gray-500 border-pixel-border hover:text-pixel-accent hover:border-pixel-accent'
-          }`}
-          onClick={onEditToggle}
-          title="Mode édition"
-        >
-          EDIT
-        </button>
-      )}
-
-      {/* Bouton SHOP */}
-      <button
-        className="font-pixel text-xs px-2 py-1 border text-yellow-400 border-yellow-600 hover:bg-pixel-bg transition-colors"
-        onClick={onShopClick}
-        title="Boutique"
-      >
-        SHOP
-      </button>
-
       {/* Bouton Gateway settings */}
       <button
         className="text-gray-500 hover:text-pixel-accent font-pixel text-xs px-2 py-1 border border-pixel-border hover:border-pixel-accent transition-colors"
@@ -146,6 +167,14 @@ export function TopBar({ onGatewayClick, onShopClick, onEditToggle, editMode }: 
         aria-label="Ouvrir les paramètres Gateway"
       >
         ⚙
+      </button>
+      <button
+        className="text-gray-500 hover:text-pixel-red font-pixel text-xs px-2 py-1 border border-pixel-border hover:border-pixel-red transition-colors"
+        onClick={onDisconnect}
+        title="Se deconnecter du gateway"
+        aria-label="Se deconnecter du gateway"
+      >
+        Disconnect
       </button>
 
       {/* Formulaire ajout instance (dropdown) */}
@@ -198,6 +227,22 @@ export function TopBar({ onGatewayClick, onShopClick, onEditToggle, editMode }: 
           </div>
         </div>
       )}
+
+      <CreateAgentDialog
+        open={showCreateAgent}
+        deskOptions={deskOptions}
+        creating={creatingAgent}
+        error={createAgentError}
+        onClearError={onClearCreateAgentError}
+        onClose={() => setShowCreateAgent(false)}
+        onCreate={async (input) => {
+          const created = await onCreateAgent(input);
+          if (created) {
+            setShowCreateAgent(false);
+          }
+          return created;
+        }}
+      />
     </div>
   );
 }

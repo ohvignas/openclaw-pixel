@@ -55,9 +55,14 @@ describe("agentStore", () => {
     expect(agent.currentToolDetail).toBe("npm test");
   });
 
-  it("does nothing when setAgentStatus targets unknown agent", () => {
+  it("creates a placeholder agent when setAgentStatus targets unknown agent", () => {
     useAgentStore.getState().setAgentStatus("unknown", "working");
-    expect(useAgentStore.getState().agents["unknown"]).toBeUndefined();
+    expect(useAgentStore.getState().agents["unknown"]).toMatchObject({
+      id: "unknown",
+      name: "unknown",
+      emoji: "🤖",
+      status: "working",
+    });
   });
 
   it("selects and deselects an agent", () => {

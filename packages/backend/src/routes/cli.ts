@@ -8,6 +8,7 @@ const execFileAsync = promisify(execFile);
 // Allowlist stricte des commandes autorisées (read-only)
 const ALLOWED_READ_COMMANDS: Record<string, string[]> = {
   "agents:list": ["agents", "list", "--json"],
+  "agents:bindings": ["agents", "bindings", "--json"],
   "hooks:list": ["hooks", "list", "--json"],
   "plugins:list": ["plugins", "list", "--json"],
   "channels:status": ["channels", "status", "--json"],

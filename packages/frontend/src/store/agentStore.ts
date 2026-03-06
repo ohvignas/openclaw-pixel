@@ -9,6 +9,7 @@ interface AgentStoreState {
   setAgentStatus: (id: string, status: AgentStatus, tool?: string, detail?: string) => void;
   selectAgent: (id: string | null) => void;
   addEvent: (event: AgentEvent) => void;
+  reset: () => void;
 }
 
 export const useAgentStore = create<AgentStoreState>((set) => ({
@@ -26,12 +27,18 @@ export const useAgentStore = create<AgentStoreState>((set) => ({
 
   setAgentStatus: (id, status, tool, detail) =>
     set((s) => {
-      if (!s.agents[id]) return s;
+      const existing = s.agents[id];
       return {
         agents: {
           ...s.agents,
           [id]: {
-            ...s.agents[id]!,
+            id,
+            name: existing?.name ?? id,
+            emoji: existing?.emoji ?? "🤖",
+            model: existing?.model,
+            sessionKey: existing?.sessionKey,
+            isDefault: existing?.isDefault,
+            assignedSeatId: existing?.assignedSeatId,
             status,
             currentTool: tool,
             currentToolDetail: detail,
@@ -46,4 +53,6 @@ export const useAgentStore = create<AgentStoreState>((set) => ({
     set((s) => ({
       eventLog: [{ ...event, id: event.id ?? crypto.randomUUID() }, ...s.eventLog].slice(0, 200),
     })),
+
+  reset: () => set({ agents: {}, selectedAgentId: null, eventLog: [] }),
 }));

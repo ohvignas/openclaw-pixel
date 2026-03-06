@@ -1,9 +1,9 @@
-version: "3.9"
-
 services:
   openclaw-gateway:
     image: ghcr.io/openclaw/openclaw:latest
     restart: unless-stopped
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT_BIND:-127.0.0.1:18789:18789}"
     volumes:
       - ${HOME}/.openclaw:/home/node/.openclaw
     environment:
@@ -36,6 +36,8 @@ services:
     environment:
       - OPENCLAW_GATEWAY_URL=ws://openclaw-gateway:18789
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - PIXEL_UI_ORIGIN=${PIXEL_UI_ORIGIN:-http://localhost:3333}
+      - OPENCLAW_DATA_PATH=/home/node/.openclaw
       - NODE_ENV=production
       - DATABASE_URL=file:/app/packages/backend/prisma/data/openclaw.db
     depends_on:

@@ -9,10 +9,10 @@ interface Channel {
 export function ChannelsTab() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [probing, setProbing] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchChannels = () => {
-    return fetch("/api/cli/run/channels:list")
+    return fetch("/api/cli/run/channels:status")
       .then((r) => {
         if (!r.ok) return [];
         return r.json();
@@ -28,17 +28,14 @@ export function ChannelsTab() {
     fetchChannels().finally(() => setLoading(false));
   }, []);
 
-  const probe = async (name: string) => {
-    setProbing(name);
+  const refresh = async () => {
+    setRefreshing(true);
     try {
-      await fetch(`/api/cli/channels/probe/${encodeURIComponent(name)}`, {
-        method: "POST",
-      });
       await fetchChannels();
     } catch {
       // ignore silently
     } finally {
-      setProbing(null);
+      setRefreshing(false);
     }
   };
 
@@ -57,7 +54,17 @@ export function ChannelsTab() {
   }
 
   return (
-    <div className="p-3 space-y-2">
+    <div className="p-3 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-pixel text-xs text-gray-500">Statut runtime des canaux</div>
+        <button
+          onClick={() => void refresh()}
+          disabled={refreshing}
+          className="shrink-0 font-pixel text-xs px-2 py-1 border border-pixel-border text-gray-400 hover:text-white hover:border-gray-400 transition-colors disabled:opacity-50"
+        >
+          {refreshing ? "..." : "Rafraichir"}
+        </button>
+      </div>
       {channels.length === 0 ? (
         <p className="font-pixel text-xs text-gray-600">Aucun canal configuré</p>
       ) : (
@@ -78,13 +85,6 @@ export function ChannelsTab() {
                   <div className="font-pixel text-xs text-gray-500">{channel.type}</div>
                 </div>
               </div>
-              <button
-                onClick={() => probe(channel.name)}
-                disabled={probing === channel.name}
-                className="shrink-0 font-pixel text-xs px-2 py-1 border border-pixel-border text-gray-400 hover:text-white hover:border-gray-400 transition-colors disabled:opacity-50"
-              >
-                {probing === channel.name ? "..." : "Probe"}
-              </button>
             </div>
           </div>
         ))

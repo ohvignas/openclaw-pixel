@@ -50,6 +50,18 @@ export const FURNITURE_CATALOG: CatalogEntryWithCategory[] = [
 
 ]
 
+export function upsertCatalogEntries(entries: FurnitureCatalogEntry[]): void {
+  for (const entry of entries) {
+    const nextEntry = entry as CatalogEntryWithCategory
+    const index = FURNITURE_CATALOG.findIndex((existing) => existing.type === entry.type)
+    if (index >= 0) {
+      FURNITURE_CATALOG[index] = nextEntry
+    } else {
+      FURNITURE_CATALOG.push(nextEntry)
+    }
+  }
+}
+
 // ── Rotation groups ──────────────────────────────────────────────
 // Flexible rotation: supports 2+ orientations (not just all 4)
 interface RotationGroup {
@@ -122,6 +134,13 @@ export function getOnStateType(currentType: string): string {
 /** Returns the "off" variant if this type has one, otherwise returns the type unchanged. */
 export function getOffStateType(currentType: string): string {
   return onToOff.get(currentType) ?? currentType
+}
+
+export function registerStatePair(offType: string, onType: string): void {
+  stateGroups.set(offType, onType)
+  stateGroups.set(onType, offType)
+  offToOn.set(offType, onType)
+  onToOff.set(onType, offType)
 }
 
 /** Returns true if the given furniture type is part of a rotation group. */

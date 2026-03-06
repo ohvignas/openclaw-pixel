@@ -1,12 +1,4 @@
 
-// ── Pixel Art Color Palette ───────────────────────────────────
-export const PIXEL_PALETTE = [
-  '#1a1a2e', '#16213e', '#0f3460', '#e94560',
-  '#4ade80', '#fbbf24', '#ef4444', '#60a5fa',
-  '#f97316', '#a78bfa', '#34d399', '#f472b6',
-  '#ffffff', '#94a3b8', '#6b7280', '#1f2937',
-]
-
 // ── Grid & Layout ────────────────────────────────────────────
 export const TILE_SIZE = 16
 export const DEFAULT_COLS = 20
@@ -88,6 +80,14 @@ export const ZOOM_LEVEL_HIDE_DELAY_MS = 2000
 export const ZOOM_LEVEL_FADE_DURATION_SEC = 0.5
 export const ZOOM_SCROLL_THRESHOLD = 50
 export const PAN_MARGIN_FRACTION = 0.25
+
+// ── Pixel Art Palette (shop color picker) ────────────────────
+export const PIXEL_PALETTE: string[] = [
+  '#1a1a2e', '#16213e', '#0f3460', '#e94560',
+  '#4ade80', '#fbbf24', '#ef4444', '#60a5fa',
+  '#f97316', '#a78bfa', '#34d399', '#f472b6',
+  '#ffffff', '#94a3b8', '#6b7280', '#1f2937',
+]
 
 // ── Game Logic ───────────────────────────────────────────────
 export const MAX_DELTA_TIME_SEC = 0.1

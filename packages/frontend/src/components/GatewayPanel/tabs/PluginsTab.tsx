@@ -29,12 +29,8 @@ export function PluginsTab() {
     const action = plugin.enabled ? "disable" : "enable";
     try {
       const res = await fetch(
-        `/api/cli/plugins/toggle`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: plugin.name, action }),
-        }
+        `/api/cli/plugins/${action}/${encodeURIComponent(plugin.name)}`,
+        { method: "POST" }
       );
       if (!res.ok) return;
       setPlugins((ps) =>
@@ -54,7 +50,7 @@ export function PluginsTab() {
       const res = await fetch("/api/cli/plugins/install", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: slug.trim() }),
+        body: JSON.stringify({ packageName: slug.trim() }),
       });
       if (!res.ok) return;
       setSlug("");

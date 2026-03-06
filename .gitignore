@@ -8,6 +8,7 @@ packages/*/node_modules/
 packages/*/vite.config.js
 packages/*/vite.config.d.ts
 instances.json
+config/tool-connections.json
 .claude/
 .worktrees/
 

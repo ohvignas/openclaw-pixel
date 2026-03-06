@@ -29,6 +29,44 @@ const EVENT_LABELS: Record<string, string> = {
 export function parseEvent(event: OpenClawEvent): ParsedAgentUpdate | null {
   if (event.type !== "event" || !event.event) return null;
 
+  if (event.event === "agent") {
+    const payload = (event.payload ?? {}) as Record<string, unknown>;
+    const sessionKey = typeof payload.sessionKey === "string" ? payload.sessionKey : "";
+    const sessionParts = sessionKey.split(":");
+    const agentId = sessionParts[1] || "default";
+    const stream = typeof payload.stream === "string" ? payload.stream : "";
+    const data = (payload.data ?? {}) as Record<string, unknown>;
+    const phase = typeof data.phase === "string" ? data.phase : "";
+    const text = typeof data.text === "string" ? data.text : undefined;
+
+    if (stream === "lifecycle" && phase === "start") {
+      return {
+        agentId,
+        status: "working",
+        eventType: "agent:lifecycle:start",
+        detail: "Execution en cours",
+      };
+    }
+
+    if (stream === "lifecycle" && phase === "end") {
+      return {
+        agentId,
+        status: "idle",
+        eventType: "agent:lifecycle:end",
+        detail: "Execution terminee",
+      };
+    }
+
+    if (stream === "assistant" && text) {
+      return {
+        agentId,
+        status: "working",
+        eventType: "agent:assistant",
+        detail: "Reponse en cours",
+      };
+    }
+  }
+
   const status = EVENT_STATUS_MAP[event.event];
   if (status === undefined) return null;
 

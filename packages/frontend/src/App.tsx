@@ -5,8 +5,10 @@ import { AgentPanel } from "./components/AgentPanel/index.tsx";
 import { GatewayPanel } from "./components/GatewayPanel/index.tsx";
 import { useAgentStore } from "./store/agentStore.ts";
 import { useGatewayStore } from "./store/gatewayStore.ts";
+import { useEconomyStore } from "./store/economyStore.ts";
 import { OpenClawClient } from "./openclaw/openclawClient.ts";
 import { parseEvent } from "./openclaw/eventParser.ts";
+import { processCoinEvent } from "./economy/coinEngine.ts";
 
 export function App() {
   const { setAgentStatus, addEvent, selectAgent } = useAgentStore();
@@ -24,6 +26,7 @@ export function App() {
     const unsubStatus = client.onStatus((s) => { setStatus(s); });
 
     const unsubEvents = client.on((event) => {
+      processCoinEvent(event);
       const update = parseEvent(event);
       if (update) {
         setAgentStatus(update.agentId, update.status, update.currentTool, update.currentToolDetail);
@@ -35,6 +38,9 @@ export function App() {
         });
       }
     });
+
+    useEconomyStore.getState().fetchBalance();
+    useEconomyStore.getState().fetchInventory();
 
     client.connect();
 

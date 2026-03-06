@@ -5,6 +5,7 @@ import { AgentPanel } from "./components/AgentPanel/index.tsx";
 import { GatewayPanel } from "./components/GatewayPanel/index.tsx";
 import { ShopOverlay } from "./components/ShopOverlay.tsx";
 import { InventoryBar } from "./components/InventoryBar.tsx";
+import { AgentScreen } from "./components/AgentScreen/index.tsx";
 import { useAgentStore } from "./store/agentStore.ts";
 import { useGatewayStore } from "./store/gatewayStore.ts";
 import { useEconomyStore } from "./store/economyStore.ts";
@@ -14,11 +15,21 @@ import { processCoinEvent } from "./economy/coinEngine.ts";
 
 export function App() {
   const { setAgentStatus, addEvent, selectAgent } = useAgentStore();
+  const agents = useAgentStore((s) => s.agents);
   const { setStatus, activeInstanceId } = useGatewayStore();
   const [showGateway, setShowGateway] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [placingInventoryItem, setPlacingInventoryItem] = useState<string | null>(null);
+  const [agentScreenId, setAgentScreenId] = useState<string | null>(null);
+  const [deskNames, setDeskNames] = useState<Record<string, string>>({});
+
+  const handleAgentClick = (agentId: string | null) => {
+    selectAgent(agentId);
+    if (agentId) {
+      setAgentScreenId(agentId);
+    }
+  };
 
   const handleToggleEdit = () => {
     setEditMode((v) => {
@@ -70,7 +81,7 @@ export function App() {
       {/* Main area */}
       <div className="flex flex-col flex-1 overflow-hidden">
         <div className="flex flex-1 overflow-hidden">
-          <OfficeCanvas onAgentClick={selectAgent} />
+          <OfficeCanvas onAgentClick={handleAgentClick} />
           <AgentPanel />
           {showGateway && <GatewayPanel onClose={() => setShowGateway(false)} />}
         </div>
@@ -82,6 +93,16 @@ export function App() {
         )}
       </div>
       {showShop && <ShopOverlay onClose={() => setShowShop(false)} />}
+      {agentScreenId && (
+        <AgentScreen
+          agentId={agentScreenId}
+          deskName={deskNames[agentScreenId] ?? 'Poste de travail'}
+          onDeskNameChange={(name) => setDeskNames((p) => ({ ...p, [agentScreenId]: name }))}
+          onClose={() => setAgentScreenId(null)}
+          availableAgents={Object.values(agents)}
+          onChangeAgent={(id) => setAgentScreenId(id)}
+        />
+      )}
     </div>
   );
 }

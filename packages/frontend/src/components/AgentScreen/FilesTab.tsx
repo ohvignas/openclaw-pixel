@@ -27,7 +27,7 @@ export function FilesTab({ agentId }: FilesTabProps) {
     setSelected(file)
     setLoadingContent(true)
     try {
-      const res = await fetch(`/api/files?path=${encodeURIComponent(file.path)}`)
+      const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/file-content?name=${encodeURIComponent(file.name)}`)
       const text = await res.text()
       setContent(text)
     } catch {

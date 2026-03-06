@@ -16,7 +16,7 @@ import {
 } from '../constants'
 import type { Character, Seat, FurnitureInstance, TileType as TileTypeVal, OfficeLayout, PlacedFurniture } from '../types'
 import { createCharacter, updateCharacter } from './characters'
-import { isWalkable, getWalkableTiles, findPath } from '../layout/tileMap'
+import { getWalkableTiles, findPath } from '../layout/tileMap'
 import {
   createDefaultLayout,
   layoutToTileMap,

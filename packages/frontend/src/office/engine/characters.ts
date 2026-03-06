@@ -12,7 +12,7 @@ import {
   WANDER_MOVES_BEFORE_REST_MAX,
   SEAT_REST_MIN_SEC,
   SEAT_REST_MAX_SEC,
-} from '../../constants'
+} from '../constants'
 
 /** Tools that show reading animation instead of typing */
 const READING_TOOLS = new Set(['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch'])

@@ -1,4 +1,3 @@
-import type { FloorColor } from './types.ts'
 
 // ── Pixel Art Color Palette ───────────────────────────────────
 export const PIXEL_PALETTE = [

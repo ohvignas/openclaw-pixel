@@ -21,3 +21,28 @@ agentsRouter.get("/:id/files", async (req, res) => {
     res.json([]);
   }
 });
+
+// GET /api/agents/:id/file-content?name=<filename>
+agentsRouter.get("/:id/file-content", async (req, res) => {
+  const workspaceDir = process.env.OPENCLAW_WORKSPACE_DIR ?? process.env.HOME ?? "/";
+  const filename = req.query.name as string;
+
+  if (!filename || /[/\\]/.test(filename)) {
+    res.status(400).json({ error: "invalid_filename" });
+    return;
+  }
+
+  const allowedExts = /\.(md|ts|tsx|js|json|txt|py|sh)$/;
+  if (!allowedExts.test(filename)) {
+    res.status(400).json({ error: "forbidden_extension" });
+    return;
+  }
+
+  try {
+    const filePath = path.join(workspaceDir, filename);
+    const content = await fs.readFile(filePath, "utf-8");
+    res.type("text/plain").send(content);
+  } catch {
+    res.status(404).json({ error: "not_found" });
+  }
+});

@@ -12,7 +12,7 @@ import {
   MATRIX_TRAIL_EMPTY_ALPHA,
   MATRIX_TRAIL_MID_THRESHOLD,
   MATRIX_TRAIL_DIM_THRESHOLD,
-} from '../../constants'
+} from '../constants'
 
 /** Hash-based flicker: ~70% visible for shimmer effect */
 function flickerVisible(col: number, row: number, time: number): boolean {

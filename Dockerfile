@@ -20,8 +20,8 @@ RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-# Installer nginx
-RUN apk add --no-cache nginx
+# Installer nginx + openssl (requis par Prisma engine)
+RUN apk add --no-cache nginx openssl
 
 # Copier les manifests pour npm resolve
 COPY package*.json ./
